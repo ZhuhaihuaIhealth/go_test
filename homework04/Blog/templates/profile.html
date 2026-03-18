@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心 - Blog</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+            background: #f0f0f5;
+            color: #1a1a2e;
+        }
+
+        /* 顶部导航栏 */
+        .navbar {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 14px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fff;
+            box-shadow: 0 2px 12px rgba(102, 126, 234, 0.4);
+        }
+        .navbar .brand {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .navbar .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 14px;
+        }
+        .navbar .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .navbar a {
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 13px;
+            padding: 6px 14px;
+            border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .navbar a:hover {
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+        }
+
+        /* 三栏布局 */
+        .container {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            gap: 20px;
+            padding: 24px 32px;
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: calc(100vh - 64px);
+        }
+
+        .panel {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .panel-header h2 {
+            font-size: 16px;
+            color: #1a1a2e;
+            font-weight: 700;
+        }
+        .panel-body {
+            padding: 0;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* 选项卡 */
+        .tab-group {
+            display: flex;
+            gap: 4px;
+            background: #f0f0f5;
+            border-radius: 8px;
+            padding: 3px;
+        }
+        .tab {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            background: transparent;
+            color: #888;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: #fff;
+            color: #667eea;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+        .tab:hover:not(.active) {
+            color: #555;
+        }
+
+        /* 文章列表 */
+        .post-item-author {
+            font-size: 12px;
+            color: #667eea;
+            margin-top: 2px;
+        }
+
+        .btn-new {
+            padding: 6px 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-new:hover { opacity: 0.85; }
+
+        .post-list {
+            list-style: none;
+        }
+        .post-item {
+            padding: 14px 20px;
+            border-bottom: 1px solid #f5f5f5;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.15s;
+        }
+        .post-item:hover {
+            background: #f8f8ff;
+        }
+        .post-item.active {
+            background: #f0f0ff;
+            border-left: 3px solid #667eea;
+        }
+        .post-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .post-item-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a2e;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .post-item-date {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 4px;
+        }
+        .btn-delete {
+            padding: 4px 10px;
+            background: none;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            color: #999;
+            font-size: 12px;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-left: 10px;
+            transition: all 0.2s;
+        }
+        .btn-delete:hover {
+            border-color: #e74c3c;
+            color: #e74c3c;
+            background: #fff5f5;
+        }
+
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: #bbb;
+            font-size: 14px;
+        }
+
+        /* 正文展示 */
+        .article-content {
+            padding: 28px 24px;
+        }
+        .article-content h1 {
+            font-size: 22px;
+            margin-bottom: 8px;
+            color: #1a1a2e;
+        }
+        .article-meta {
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .article-body {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #333;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .article-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #ccc;
+            font-size: 15px;
+        }
+
+        /* 评论列表 */
+        .comment-item {
+            padding: 14px 20px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .comment-user {
+            font-size: 13px;
+            font-weight: 600;
+            color: #667eea;
+        }
+        .comment-date {
+            font-size: 11px;
+            color: #bbb;
+            margin-left: 8px;
+        }
+        .comment-text {
+            font-size: 14px;
+            color: #444;
+            margin-top: 6px;
+            line-height: 1.6;
+        }
+
+        /* 弹窗 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal {
+            background: #fff;
+            border-radius: 16px;
+            padding: 32px;
+            width: 520px;
+            max-width: 90vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .modal h2 {
+            font-size: 20px;
+            margin-bottom: 24px;
+            color: #1a1a2e;
+        }
+        .modal .form-group {
+            margin-bottom: 16px;
+        }
+        .modal label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 6px;
+        }
+        .modal input,
+        .modal textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+        .modal input:focus,
+        .modal textarea:focus {
+            border-color: #667eea;
+        }
+        .modal textarea {
+            min-height: 160px;
+            resize: vertical;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .btn-cancel {
+            padding: 10px 24px;
+            background: #f0f0f0;
+            color: #666;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-cancel:hover { background: #e0e0e0; }
+        .btn-submit {
+            padding: 10px 24px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-submit:hover { opacity: 0.85; }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+                padding: 16px;
+            }
+            .panel { min-height: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <span class="brand">Blog System</span>
+    <div class="user-info">
+        <div class="avatar">{{ slice .Username 0 1 }}</div>
+        <span>{{ .Username }}</span>
+        <a href="/logout">退出</a>
+    </div>
+</nav>
+
+<div class="container">
+    <!-- 左侧：文章列表 -->
+    <div class="panel">
+        <div class="panel-header">
+            <div class="tab-group">
+                <button class="tab active" id="tabAll" onclick="switchTab('all')">全部</button>
+                <button class="tab" id="tabMine" onclick="switchTab('mine')">我的</button>
+            </div>
+            <button class="btn-new" onclick="openCreateModal()">+ 新建</button>
+        </div>
+        <div class="panel-body">
+            <ul class="post-list" id="postList">
+                <div class="empty-state">加载中...</div>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 中间：正文展示 -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 id="articleTitle">文章正文</h2>
+        </div>
+        <div class="panel-body">
+            <div id="articleArea">
+                <div class="article-placeholder">点击左侧文章查看内容</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：评论展示 -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 id="commentTitle">评论</h2>
+            <button class="btn-new" id="btnComment" style="display:none" onclick="openCommentModal()">+ 评论</button>
+        </div>
+        <div class="panel-body">
+            <div id="commentArea">
+                <div class="empty-state">选择文章后查看评论</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新建文章弹窗 -->
+<div class="modal-overlay" id="createModal">
+    <div class="modal">
+        <h2>新建文章</h2>
+        <div class="form-group">
+            <label for="newTitle">标题</label>
+            <input type="text" id="newTitle" placeholder="请输入文章标题">
+        </div>
+        <div class="form-group">
+            <label for="newContent">正文</label>
+            <textarea id="newContent" placeholder="请输入文章内容"></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeCreateModal()">取消</button>
+            <button class="btn-submit" onclick="submitPost()">提交</button>
+        </div>
+    </div>
+</div>
+
+<!-- 评论弹窗 -->
+<div class="modal-overlay" id="commentModal">
+    <div class="modal">
+        <h2>发表评论</h2>
+        <div class="form-group">
+            <label for="commentContent">评论内容</label>
+            <textarea id="commentContent" placeholder="请输入评论内容" style="min-height:100px"></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeCommentModal()">取消</button>
+            <button class="btn-submit" onclick="submitComment()">提交</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var currentPostID = null;
+var currentTab = 'all';
+var currentUserID = {{ .UserID }};
+
+function getToken() {
+    const match = document.cookie.match(/(?:^|;\s*)token=([^;]*)/);
+    return match ? match[1] : '';
+}
+
+function authHeaders(extra) {
+    const h = { 'Authorization': 'Bearer ' + getToken() };
+    if (extra) Object.assign(h, extra);
+    return h;
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tabAll').classList.toggle('active', tab === 'all');
+    document.getElementById('tabMine').classList.toggle('active', tab === 'mine');
+    loadPostList();
+}
+
+async function loadPostList() {
+    var url = currentTab === 'all' ? '/api/posts/all' : '/api/posts';
+    var res = await fetch(url, { headers: authHeaders() });
+    if (res.status === 401) { window.location.href = '/login?msg=请先登录'; return; }
+    var data = await res.json();
+    if (!res.ok) { return; }
+
+    var posts = data.posts || [];
+    var list = document.getElementById('postList');
+
+    if (posts.length === 0) {
+        list.innerHTML = '<div class="empty-state">暂无文章</div>';
+        return;
+    }
+
+    var html = '';
+    posts.forEach(function(p) {
+        var date = new Date(p.CreatedAt).toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+        var authorHtml = '';
+        if (currentTab === 'all' && p.Username) {
+            authorHtml = '<div class="post-item-author">' + escapeHtml(p.Username) + '</div>';
+        }
+        var isOwn = (p.UserID === currentUserID);
+        var deleteBtn = isOwn
+            ? '<button class="btn-delete" onclick="event.stopPropagation(); deletePost(' + p.ID + ')">删除</button>'
+            : '';
+        html += '<li class="post-item" data-id="' + p.ID + '" onclick="loadPost(' + p.ID + ', this)">' +
+            '<div class="post-item-info">' +
+                '<div class="post-item-title">' + escapeHtml(p.Title) + '</div>' +
+                authorHtml +
+                '<div class="post-item-date">' + date + '</div>' +
+            '</div>' +
+            deleteBtn +
+        '</li>';
+    });
+    list.innerHTML = html;
+}
+
+loadPostList();
+
+function openCreateModal() {
+    document.getElementById('createModal').classList.add('show');
+    document.getElementById('newTitle').value = '';
+    document.getElementById('newContent').value = '';
+    document.getElementById('newTitle').focus();
+}
+
+function closeCreateModal() {
+    document.getElementById('createModal').classList.remove('show');
+}
+
+document.getElementById('createModal').addEventListener('click', function(e) {
+    if (e.target === this) closeCreateModal();
+});
+
+async function submitPost() {
+    const title = document.getElementById('newTitle').value.trim();
+    const content = document.getElementById('newContent').value.trim();
+    if (!title) { alert('请输入文章标题'); return; }
+
+    const res = await fetch('/api/posts', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ title, content })
+    });
+
+    if (res.status === 302 || res.redirected) {
+        window.location.href = '/login?msg=请先登录';
+        return;
+    }
+
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || '创建失败'); return; }
+
+    closeCreateModal();
+    loadPostList();
+}
+
+async function deletePost(postID) {
+    if (!confirm('确定要删除这篇文章吗？')) return;
+
+    const res = await fetch('/api/posts/' + postID, { method: 'DELETE', headers: authHeaders() });
+
+    if (res.status === 302 || res.redirected) {
+        window.location.href = '/login?msg=请先登录';
+        return;
+    }
+
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || '删除失败'); return; }
+
+    loadPostList();
+
+    document.getElementById('articleArea').innerHTML =
+        '<div class="article-placeholder">点击左侧文章查看内容</div>';
+    document.getElementById('articleTitle').textContent = '文章正文';
+    document.getElementById('commentArea').innerHTML =
+        '<div class="empty-state">选择文章后查看评论</div>';
+    document.getElementById('commentTitle').textContent = '评论';
+    document.getElementById('btnComment').style.display = 'none';
+    currentPostID = null;
+}
+
+async function loadPost(postID, el) {
+    currentPostID = postID;
+    document.querySelectorAll('.post-item').forEach(function(item) {
+        item.classList.remove('active');
+    });
+    if (el) el.classList.add('active');
+    document.getElementById('btnComment').style.display = 'inline-block';
+
+    const res = await fetch('/api/posts/' + postID, { headers: authHeaders() });
+
+    if (res.status === 302 || res.redirected) {
+        window.location.href = '/login?msg=请先登录';
+        return;
+    }
+
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || '加载失败'); return; }
+
+    const post = data.post;
+    const comments = data.comments || [];
+
+    document.getElementById('articleTitle').textContent = post.Title;
+
+    const createdAt = new Date(post.CreatedAt).toLocaleString('zh-CN');
+    document.getElementById('articleArea').innerHTML =
+        '<div class="article-content">' +
+            '<h1>' + escapeHtml(post.Title) + '</h1>' +
+            '<div class="article-meta">发布于 ' + createdAt + '</div>' +
+            '<div class="article-body">' + escapeHtml(post.Content || '（无内容）') + '</div>' +
+        '</div>';
+
+    document.getElementById('commentTitle').textContent = '评论 (' + comments.length + ')';
+
+    if (comments.length === 0) {
+        document.getElementById('commentArea').innerHTML =
+            '<div class="empty-state">暂无评论</div>';
+    } else {
+        let html = '';
+        comments.forEach(function(c) {
+            const cDate = new Date(c.CreatedAt).toLocaleString('zh-CN');
+            html += '<div class="comment-item">' +
+                '<span class="comment-user">' + escapeHtml(c.Username || '未知用户') + '</span>' +
+                '<span class="comment-date">' + cDate + '</span>' +
+                '<div class="comment-text">' + escapeHtml(c.Content) + '</div>' +
+            '</div>';
+        });
+        document.getElementById('commentArea').innerHTML = html;
+    }
+}
+
+function openCommentModal() {
+    document.getElementById('commentModal').classList.add('show');
+    document.getElementById('commentContent').value = '';
+    document.getElementById('commentContent').focus();
+}
+
+function closeCommentModal() {
+    document.getElementById('commentModal').classList.remove('show');
+}
+
+document.getElementById('commentModal').addEventListener('click', function(e) {
+    if (e.target === this) closeCommentModal();
+});
+
+async function submitComment() {
+    const content = document.getElementById('commentContent').value.trim();
+    if (!content) { alert('请输入评论内容'); return; }
+    if (!currentPostID) { alert('请先选择文章'); return; }
+
+    const res = await fetch('/api/posts/' + currentPostID + '/comments', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ content: content })
+    });
+
+    if (res.status === 401) {
+        window.location.href = '/login?msg=请先登录';
+        return;
+    }
+
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || '评论失败'); return; }
+
+    closeCommentModal();
+    var activeEl = document.querySelector('.post-item.active');
+    loadPost(currentPostID, activeEl);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+
+</body>
+</html>
