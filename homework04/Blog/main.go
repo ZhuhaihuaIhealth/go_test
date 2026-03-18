@@ -2,12 +2,14 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"BlogSystem/testutil"
@@ -46,14 +48,14 @@ func main() {
 		c.HTML(http.StatusOK, "register.html", gin.H{})
 	})
 
-	r.POST("/register", func(c *gin.Context) {
+	r.POST("/register", rateLimitMiddleware(), func(c *gin.Context) {
 		username := c.PostForm("username")
 		email := c.PostForm("email")
 		password := c.PostForm("password")
 
 		_, err := RegisterUser(db, username, password, email)
 		if err != nil {
-			c.HTML(http.StatusOK, "register.html", gin.H{
+			c.HTML(http.StatusBadRequest, "register.html", gin.H{
 				"Message": err.Error(),
 				"Success": false,
 			})
@@ -72,13 +74,13 @@ func main() {
 		c.HTML(http.StatusOK, "login.html", data)
 	})
 
-	r.POST("/login", func(c *gin.Context) {
+	r.POST("/login", rateLimitMiddleware(), func(c *gin.Context) {
 		username := c.PostForm("username")
 		password := c.PostForm("password")
 
 		tokenStr, err := login(db, username, password)
 		if err != nil {
-			c.HTML(http.StatusOK, "login.html", gin.H{
+			c.HTML(http.StatusUnauthorized, "login.html", gin.H{
 				"Message": "登录失败，" + err.Error(),
 				"Success": false,
 			})
@@ -97,7 +99,7 @@ func main() {
 
 	// 需要认证的路由组
 	auth := r.Group("/api")
-	auth.Use(AuthMiddleware())
+	auth.Use(rateLimitMiddleware(), AuthMiddleware())
 	{
 		auth.GET("/profile", func(c *gin.Context) {
 			username, _ := c.Get("username")
@@ -317,4 +319,63 @@ func formatUint(n uint) string {
 		digits[i], digits[j] = digits[j], digits[i]
 	}
 	return string(digits)
+}
+// 限流中间件
+var (
+	requestCount  = make(map[string]int)
+	failCount     = make(map[string]int)
+	lastResetTime = time.Now()
+	blockedIPs    = make(map[string]time.Time)
+	mutex         sync.Mutex
+)
+
+func rateLimitMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		fmt.Println("rateLimitMiddleware")
+		ip := c.ClientIP()
+		now := time.Now()
+
+		mutex.Lock()
+		defer mutex.Unlock()
+
+		if blockedAt, ok := blockedIPs[ip]; ok {
+			if now.Sub(blockedAt) < 30*time.Minute {
+				remaining := 30*time.Minute - now.Sub(blockedAt)
+				c.Header("Retry-After", strconv.Itoa(int(remaining.Seconds())))
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": fmt.Sprintf("IP 已被封禁，%.0f 分钟后解封", remaining.Minutes()),
+				})
+				c.Abort()
+				return
+			}
+			delete(blockedIPs, ip)
+			delete(failCount, ip)
+		}
+
+		if now.Sub(lastResetTime) > time.Minute {
+			requestCount = make(map[string]int)
+			failCount = make(map[string]int)
+			lastResetTime = now
+		}
+
+		if requestCount[ip] >= 10 {
+			c.Header("Retry-After", "60")
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error": "请求过于频繁，请稍后再试",
+			})
+			c.Abort()
+			return
+		}
+
+		requestCount[ip]++
+		c.Next()
+
+		if c.Writer.Status() >= 400 {
+			failCount[ip]++
+			if failCount[ip] >= 5 {
+				blockedIPs[ip] = now
+				fmt.Printf("IP %s 因1分钟内失败 %d 次被封禁30分钟\n", ip, failCount[ip])
+			}
+		}
+	}
 }
