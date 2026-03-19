@@ -1,12 +1,12 @@
-package testutil
+package config
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
-	"testing"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -35,8 +35,8 @@ func LoadEnv() {
 		if !ok {
 			panic("当前文件获取失败")
 		}
-		testUtilDir := filepath.Dir(filename)
-		blogDir := filepath.Dir(testUtilDir)
+		configDir := filepath.Dir(filename)
+		blogDir := filepath.Dir(configDir)
 		envfile := filepath.Join(blogDir, ".env")
 		if err := godotenv.Load(envfile); err != nil {
 			return
@@ -60,14 +60,13 @@ func GetDBType() DBType {
 	}
 }
 
-// GetDBDir 获取数据库目录
 func GetDBDir() (string, error) {
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
 		panic("无法获取当前文件")
 	}
-	testUtilDir := filepath.Dir(filename)
-	blogDir := filepath.Dir(testUtilDir)
+	configDir := filepath.Dir(filename)
+	blogDir := filepath.Dir(configDir)
 	dbDir := filepath.Join(blogDir, "db")
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
 		return "", err
@@ -108,7 +107,6 @@ func openSQLiteDB(dbPath string) (*gorm.DB, error) {
 	)
 }
 
-// OpenDB 根据 .env 配置打开数据库连接（非测试用）
 func OpenDB(filename string) (*gorm.DB, error) {
 	dbType := GetDBType()
 	dbDir, err := GetDBDir()
@@ -125,41 +123,29 @@ func OpenDB(filename string) (*gorm.DB, error) {
 	}
 }
 
-// NewTestDB 创建测试用数据库连接
-func NewTestDB(t *testing.T, filename string) *gorm.DB {
-	t.Helper()
-	dbType := GetDBType()
-	var db *gorm.DB
-	var err error
-
-	switch dbType {
-	case DBTypeSQLite:
-		db, err = newSQLiteDB(filename)
-	default:
-		panic("未知的数据库类型: " + string(dbType))
-	}
-	if err != nil {
-		t.Fatalf("创建数据库失败: %v", err)
-	}
-
+func SetDBPool(db *gorm.DB) {
 	sqlDB, err := db.DB()
 	if err != nil {
-		t.Fatalf("获取数据库连接失败: %v", err)
+		log.Fatal("获取数据库连接失败: ", err)
 	}
-	sqlDB.SetMaxOpenConns(5)
-	sqlDB.SetMaxIdleConns(3)
-	sqlDB.SetConnMaxLifetime(30 * time.Hour)
-	t.Cleanup(func() {
-		sqlDB.Close()
-	})
-	return db
+	sqlDB.SetMaxOpenConns(25)
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetConnMaxLifetime(30 * time.Minute)
+	sqlDB.SetConnMaxIdleTime(5 * time.Minute)
 }
 
-func newSQLiteDB(filename string) (*gorm.DB, error) {
-	dbDir, err := GetDBDir()
+func GetTemplateDir() string {
+	dir, err := os.Getwd()
 	if err != nil {
-		return nil, err
+		log.Fatal("获取工作目录失败: ", err)
 	}
-	dbPath := filepath.Join(dbDir, buildSQLiteFilename(filename))
-	return openSQLiteDB(dbPath)
+	return filepath.Join(dir, "templates")
+}
+
+func GetJWTKey() []byte {
+	key := os.Getenv("JWT_KEY")
+	if key == "" {
+		log.Fatal("JWT_KEY 环境变量未设置")
+	}
+	return []byte(key)
 }
