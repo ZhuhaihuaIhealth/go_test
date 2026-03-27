@@ -1,0 +1,130 @@
+syntax = "proto3";
+
+package user;
+
+option go_package = "./pb";
+
+// 用户服务定义
+service UserService {
+  // 获取单个用户
+  rpc GetUser(GetUserRequest) returns (User);
+  
+  // 创建用户
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  
+  // 获取用户列表
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  
+  // 更新用户
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+  
+  // 删除用户
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+  
+  // 流式获取用户（服务端流）
+  rpc StreamUsers(StreamUsersRequest) returns (stream User);
+  
+  // 批量创建用户（客户端流）
+  rpc BatchCreateUsers(stream CreateUserRequest) returns (BatchCreateUsersResponse);
+  
+  // 双向流（聊天式交互）
+  rpc ChatUsers(stream ChatMessage) returns (stream ChatMessage);
+}
+
+// 用户消息定义
+message User {
+  int64 id = 1;
+  string username = 2;
+  string email = 3;
+  int32 age = 4;
+  bool active = 5;
+  repeated string tags = 6;
+  map<string, string> metadata = 7;
+}
+
+// 获取用户请求
+message GetUserRequest {
+  int64 id = 1;
+}
+
+// 创建用户请求
+message CreateUserRequest {
+  string username = 1;
+  string email = 2;
+  int32 age = 3;
+  repeated string tags = 4;
+  map<string, string> metadata = 5;
+}
+
+// 创建用户响应
+message CreateUserResponse {
+  User user = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+// 获取用户列表请求
+message ListUsersRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  string filter = 3;  // 可选的过滤条件
+}
+
+// 获取用户列表响应
+message ListUsersResponse {
+  repeated User users = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+// 更新用户请求
+message UpdateUserRequest {
+  int64 id = 1;
+  string username = 2;
+  string email = 3;
+  int32 age = 4;
+  bool active = 5;
+  repeated string tags = 6;
+  map<string, string> metadata = 7;
+}
+
+// 更新用户响应
+message UpdateUserResponse {
+  User user = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+// 删除用户请求
+message DeleteUserRequest {
+  int64 id = 1;
+}
+
+// 删除用户响应
+message DeleteUserResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// 流式获取用户请求
+message StreamUsersRequest {
+  int32 limit = 1;
+  int32 interval_ms = 2;  // 发送间隔（毫秒）
+}
+
+// 批量创建用户响应
+message BatchCreateUsersResponse {
+  repeated User users = 1;
+  int32 success_count = 2;
+  int32 fail_count = 3;
+  string message = 4;
+}
+
+// 聊天消息（用于双向流示例）
+message ChatMessage {
+  string user_id = 1;
+  string message = 2;
+  int64 timestamp = 3;
+}
+

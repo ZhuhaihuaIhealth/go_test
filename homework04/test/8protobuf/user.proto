@@ -1,0 +1,35 @@
+syntax = "proto3";
+package user;
+
+option go_package = "./pb";
+
+// 用户信息定义
+message User {
+    int64 id = 1;
+    string username = 2;
+    string email = 3;
+    int32 age = 4;
+    bool active = 5;
+    repeated string tags = 6;  // 数组
+    map<string, string> metadata = 7;  // 映射
+}
+
+//用户列表
+message UserList {
+	repeated User users = 1;
+    int32 total = 2;
+}
+
+//创建user请求
+message CreateUserRequest {
+	string username = 1;
+    string email = 2;
+    int32 age = 3;
+}
+
+//创建user响应
+message CreateUserResponse {
+	User user = 1;
+    bool success = 2;
+    string message = 3;
+}

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MD Grabber</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 400px;
+      min-height: 200px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid #21262d;
+    }
+
+    .header svg {
+      flex-shrink: 0;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #e6edf3;
+    }
+
+    .header .version {
+      font-size: 11px;
+      color: #484f58;
+      margin-left: auto;
+    }
+
+    .content {
+      padding: 16px 20px;
+    }
+
+    /* Status Card */
+    .status-card {
+      background: #161b22;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .status-card.detected {
+      border-color: #1f6feb;
+    }
+
+    .status-card.error {
+      border-color: #da3633;
+    }
+
+    .status-icon {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-weight: 500;
+    }
+
+    .status-icon.ok { color: #3fb950; }
+    .status-icon.warn { color: #d29922; }
+    .status-icon.err { color: #f85149; }
+
+    .file-info {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 4px 12px;
+      font-size: 12px;
+    }
+
+    .file-info .label {
+      color: #484f58;
+    }
+
+    .file-info .value {
+      color: #c9d1d9;
+      word-break: break-all;
+    }
+
+    /* Mode Selection */
+    .mode-section {
+      margin-bottom: 14px;
+    }
+
+    .mode-section label.section-label {
+      display: block;
+      font-size: 12px;
+      color: #8b949e;
+      margin-bottom: 8px;
+    }
+
+    .mode-options {
+      display: flex;
+      gap: 8px;
+    }
+
+    .mode-option {
+      flex: 1;
+      position: relative;
+    }
+
+    .mode-option input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .mode-option .mode-btn {
+      display: block;
+      padding: 10px 12px;
+      background: #161b22;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+
+    .mode-option .mode-btn:hover {
+      border-color: #30363d;
+      background: #1c2128;
+    }
+
+    .mode-option input:checked + .mode-btn {
+      border-color: #1f6feb;
+      background: #0d1117;
+    }
+
+    .mode-btn .mode-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: #e6edf3;
+      margin-bottom: 2px;
+    }
+
+    .mode-btn .mode-desc {
+      font-size: 11px;
+      color: #484f58;
+    }
+
+    /* Download Button */
+    .download-btn {
+      width: 100%;
+      padding: 12px;
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .download-btn:hover:not(:disabled) {
+      background: #2ea043;
+    }
+
+    .download-btn:disabled {
+      background: #21262d;
+      color: #484f58;
+      cursor: not-allowed;
+    }
+
+    .download-btn.downloading {
+      background: #1f6feb;
+    }
+
+    /* Progress */
+    .progress-section {
+      margin-top: 14px;
+      display: none;
+    }
+
+    .progress-section.visible {
+      display: block;
+    }
+
+    .progress-bar-track {
+      height: 6px;
+      background: #21262d;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #1f6feb, #58a6ff);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .progress-bar-fill.done {
+      background: linear-gradient(90deg, #238636, #3fb950);
+    }
+
+    .progress-bar-fill.error {
+      background: linear-gradient(90deg, #da3633, #f85149);
+    }
+
+    /* Logs */
+    .log-container {
+      max-height: 160px;
+      overflow-y: auto;
+      font-size: 11px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    .log-container::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .log-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .log-container::-webkit-scrollbar-thumb {
+      background: #30363d;
+      border-radius: 2px;
+    }
+
+    .log-entry {
+      padding: 2px 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .log-entry .log-icon {
+      flex-shrink: 0;
+      width: 14px;
+      text-align: center;
+    }
+
+    .log-entry.info { color: #8b949e; }
+    .log-entry.success { color: #3fb950; }
+    .log-entry.warn { color: #d29922; }
+    .log-entry.error { color: #f85149; }
+
+    /* Manual URL Input */
+    .manual-section {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #21262d;
+    }
+
+    .manual-toggle {
+      font-size: 11px;
+      color: #58a6ff;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .manual-toggle:hover {
+      text-decoration: underline;
+    }
+
+    .manual-input-group {
+      display: none;
+      margin-top: 8px;
+    }
+
+    .manual-input-group.visible {
+      display: flex;
+      gap: 8px;
+    }
+
+    .manual-input-group input {
+      flex: 1;
+      padding: 8px 10px;
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 6px;
+      color: #c9d1d9;
+      font-size: 12px;
+      outline: none;
+    }
+
+    .manual-input-group input:focus {
+      border-color: #1f6feb;
+    }
+
+    .manual-input-group button {
+      padding: 8px 14px;
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #c9d1d9;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .manual-input-group button:hover {
+      background: #30363d;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="2" width="18" height="20" rx="3" stroke="#58a6ff" stroke-width="1.5"/>
+      <path d="M8 7h3l1.5 3L14 7h3" stroke="#58a6ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="8" y1="13" x2="16" y2="13" stroke="#30363d" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="8" y1="16" x2="13" y2="16" stroke="#30363d" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <h1>MD Grabber</h1>
+    <span class="version">v1.0</span>
+  </div>
+
+  <div class="content">
+    <div id="statusCard" class="status-card">
+      <div id="statusIcon" class="status-icon">
+        <span>⏳</span>
+        <span>正在检测页面...</span>
+      </div>
+      <div id="fileInfo" class="file-info" style="display: none;"></div>
+    </div>
+
+    <div id="optionsSection" style="display: none;">
+      <div class="mode-section">
+        <label class="section-label">下载模式</label>
+        <div class="mode-options">
+          <label class="mode-option">
+            <input type="radio" name="mode" value="zip" checked>
+            <div class="mode-btn">
+              <div class="mode-title">📦 ZIP 打包</div>
+              <div class="mode-desc">MD + images 文件夹</div>
+            </div>
+          </label>
+          <label class="mode-option">
+            <input type="radio" name="mode" value="embedded">
+            <div class="mode-btn">
+              <div class="mode-title">📄 单文件</div>
+              <div class="mode-desc">图片内嵌为 Base64</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <button id="downloadBtn" class="download-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7,10 12,15 17,10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        抓取并下载
+      </button>
+    </div>
+
+    <div id="progressSection" class="progress-section">
+      <div class="progress-bar-track">
+        <div id="progressBar" class="progress-bar-fill"></div>
+      </div>
+      <div id="logContainer" class="log-container"></div>
+    </div>
+
+    <div class="manual-section">
+      <button id="manualToggle" class="manual-toggle">手动输入 Markdown URL ▾</button>
+      <div id="manualInputGroup" class="manual-input-group">
+        <input type="text" id="manualUrl" placeholder="https://raw.githubusercontent.com/...">
+        <button id="manualConfirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="lib/jszip.min.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+server:
+  port: "8080"
+  host: "0.0.0.0"
+  mode: "debug"  # debug, release, test
+
+database:
+  host: "localhost"
+  port: 3306
+  user: "root"
+  password: "password"
+  dbname: "myapp"
+
+jwt:
+  secret: "your-secret-key-change-in-production"
+  expires: "24h"
+
